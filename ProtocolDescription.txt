@@ -1,0 +1,87 @@
+[CIS 553] HW 6 –– Part A
+Names: Joseph Liu, Adi Manjunath
+Penn IDs: joeliu, adithyam
+
+
+1. What types of messages does your jukebox protocol send, and what do they 
+mean?
+Ans: 
+
+There will be primarily two types of messages: request and response messages,
+similar to HTTP. The client makes a request and the server responds.
+
+The protocol will be built on top of persistent TCP connection to ensure reliable delivery of packets.
+
+For the client request messages, there will be several method commands that they can issue:
+1) SETUP - establish connection
+2) LIST - list the songs available on the server
+3) PLAY - play a specific song by specifying the song ID within the datagram sent to the server
+4) STOP - stops a song if a song is playing
+5) TEARDOWN - close connection.
+
+2. How are your messages formatted?  Are they text or binary, and what does 
+the header look like?  How do you determine where one message ends and 
+another begins?
+Ans: 
+
+Our messages will be in a text format similar to HTTP and RTSP message formats, except instead of using CRLF to indicate a next line, we will use the protokitty symbol >^,^< to indicate a new line. And instead of a double CRLF to indicate end of message, we will use two protokitty symbols >^,^<>^,^<to indicate the end of message.
+
+Client requests:
+	PLAY|url/id|>^,^<|>^,^<
+	SETUP|url|>^,^<|>^,^<
+	TEARDOWN|url|>^,^<|>^,^<
+	LIST|url|>^,^<|>^,^<
+	STOP|url|>^,^<|>^,^<
+
+Server responses:
+	REASON-PHRASES: LIST (300), PLAY (100), OK (200), NOT FOUND (404)
+
+	MEOW|REASON-PHRASE|>^,^<|DATA|>^,^<|>^,^<
+	MEOW|OK|>^,^<|>^,^<
+	HISS|REASON-PHRASE|>^,^<|>^,^<
+
+        (DATA in the case of LIST is delimited by |>^,^<)
+
+3. What type of state does the server need to store per-client?  What does 
+that state mean (e.g., the fields in the client struct)?
+Ans: 
+The server will need to store a boolean "connected" state to keep track if a 
+client is connected to the server or not. It may also be useful to keep track 
+of the song ID of a song that is being sent to the client (when this occurs) 
+as the server breaks the mp3 file up into chunks and sends it to the client.
+
+
+4. How do messages transition the client/server from one state to another?
+Ans: 
+Our protocol will involve the client first sending a setup request to the 
+server, which will in turn respond with an acknowledgement. This is similar 
+to how the RSTP protocol works. 
+
+Once the above is complete and a connection has been set up, the client can send requests using the format specified above, and the server sends the appropriate response. This occurs over a persistent connection. 
+
+To ensure persistent connections get closed however, the server needs to maintain a TTL state for each client, whereby if no request messages are received within a certain time frame, then the connection gets torn down.
+
+Example of how message exchange would look like:
+
+      C:SETUP pmp://192.168.0.1/ >^,^<
+      	>^,^< >^,^<
+      S:MEOW OK >^,^<
+      	>^,^< >^,^<
+
+      C:LIST pmp://192.168.0.1/ >^,^<
+      	>^,^< >^,^<
+      S:MEOW OK >^,^<
+        >^,^< >^,^<
+      	1 - Delilah, Queen >^,^<
+      	2 - The Lion Sleeps Tonight, Tokens >^,^<
+      	3 - What's New Pussycat, Tom Jones >^,^<
+      	>^,^< >^,^<
+
+      C:PLAY pmp://192.168.0.1/3 >^,^<
+      S:MEOW OK >^,^<
+        (music bytes) >^,^<
+        >^,^< >^,^<
+
+
+5. Anything else I should know about the way it works?
+Ans: It's gonna be purrrrfect.
